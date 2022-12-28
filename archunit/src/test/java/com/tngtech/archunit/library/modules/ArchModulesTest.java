@@ -11,6 +11,7 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.library.modules.ArchModule.Identifier;
 import com.tngtech.archunit.library.modules.testexamples.valid.module1.FirstClassInModule1;
+import com.tngtech.archunit.library.modules.testexamples.valid.module1.ModuleOneDescriptor;
 import com.tngtech.archunit.library.modules.testexamples.valid.module1.SecondClassInModule1;
 import com.tngtech.archunit.library.modules.testexamples.valid.module1.sub1.FirstClassInSubModule11;
 import com.tngtech.archunit.library.modules.testexamples.valid.module1.sub1.SecondClassInSubModule11;
@@ -28,9 +29,10 @@ import static com.tngtech.archunit.testutil.Assertions.assertThatDependencies;
 import static com.tngtech.archunit.testutil.Assertions.assertThatTypes;
 import static com.tngtech.archunit.testutil.assertion.DependenciesAssertion.from;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ArchModulesTest {
-    private final String validTestExamplePackage = getClass().getPackage().getName() + ".testexamples.valid";
+    private final String validTestExamplePackage = getExamplePackage("valid");
     private final JavaClasses testExamples = new ClassFileImporter().importPackages(validTestExamplePackage);
 
     @Test
@@ -42,6 +44,7 @@ public class ArchModulesTest {
         ArchModule module = modules.getByIdentifier("module1");
 
         assertThatTypes(module).matchInAnyOrder(
+                ModuleOneDescriptor.class,
                 FirstClassInModule1.class,
                 SecondClassInModule1.class);
 
@@ -58,6 +61,7 @@ public class ArchModulesTest {
         ArchModule module = modules.getByIdentifier("module1");
 
         assertThatTypes(module).matchInAnyOrder(
+                ModuleOneDescriptor.class,
                 FirstClassInModule1.class,
                 SecondClassInModule1.class,
                 FirstClassInSubModule11.class,
@@ -169,6 +173,41 @@ public class ArchModulesTest {
     }
 
     @Test
+    public void allows_defining_modules_by_root_classes() {
+        ArchModules modules = ArchModules
+                .defineByRootClasses(javaClass -> javaClass.getSimpleName().endsWith("Descriptor"))
+                .modularize(testExamples);
+
+        ArchModule module = modules.getByIdentifier(ModuleOneDescriptor.class.getPackage().getName());
+
+        assertThatTypes(module).matchInAnyOrder(
+                ModuleOneDescriptor.class,
+                FirstClassInModule1.class,
+                SecondClassInModule1.class,
+                FirstClassInSubModule11.class,
+                SecondClassInSubModule11.class,
+                FirstClassInSubModule12.class,
+                SecondClassInSubModule12.class);
+    }
+
+    @Test
+    public void rejects_overlapping_modules_by_root_classes() {
+        JavaClasses invalidExamples = new ClassFileImporter().importPackages(getExamplePackage("invalid"));
+
+        assertThatThrownBy(
+                () -> ArchModules
+                        .defineByRootClasses(javaClass -> javaClass.getSimpleName().endsWith("Descriptor"))
+                        .modularize(invalidExamples)
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("modules from root classes would overlap")
+                .hasMessageContaining(
+                        com.tngtech.archunit.library.modules.testexamples.invalid.overlapping_root_classes.ModuleOneDescriptor.class.getPackage().getName())
+                .hasMessageContaining(
+                        com.tngtech.archunit.library.modules.testexamples.invalid.overlapping_root_classes.child.ModuleTwoDescriptor.class.getPackage().getName());
+    }
+
+    @Test
     public void provides_class_dependencies_from_self() {
         ArchModules modules = ArchModules
                 .defineByPackages(validTestExamplePackage + ".(*).(*)")
@@ -250,6 +289,10 @@ public class ArchModulesTest {
                 .contain(SecondClassInSubModule11.class, FirstClassInModule2.class)
                 .doesNotContain(FirstClassInSubModule11.class, FirstClassInSubModule12.class)
                 .doesNotContain(FirstClassInSubModule11.class, SecondClassInSubModule12.class);
+    }
+
+    private String getExamplePackage(String subpackageName) {
+        return getClass().getPackage().getName() + ".testexamples." + subpackageName;
     }
 
     private static ModuleDependenciesAssertion assertThatModuleDependencies(Collection<? extends ModuleDependency> dependencies) {

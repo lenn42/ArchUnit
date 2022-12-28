@@ -17,11 +17,13 @@ package com.tngtech.archunit.library.modules;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
@@ -41,6 +43,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Multimaps.asMap;
 import static com.tngtech.archunit.PublicAPI.Usage.ACCESS;
+import static com.tngtech.archunit.PublicAPI.Usage.INHERITANCE;
 import static com.tngtech.archunit.core.domain.PackageMatcher.TO_GROUPS;
 import static com.tngtech.archunit.library.modules.ArchModule.Identifier.ignore;
 import static java.util.function.Function.identity;
@@ -167,11 +170,78 @@ public final class ArchModules extends ForwardingCollection<ArchModule> {
         return defineBy(identifierByPackage(packageIdentifier));
     }
 
-    private static Function<JavaClass, Identifier> identifierByPackage(final String packageIdentifier) {
+    private static IdentifierAssociation identifierByPackage(final String packageIdentifier) {
         return javaClass -> {
             PackageMatcher packageMatcher = PackageMatcher.of(packageIdentifier);
             Optional<PackageMatcher.Result> result = packageMatcher.match(javaClass.getPackageName());
             return result.map(TO_GROUPS).map(Identifier::from).orElse(ignore());
+        };
+    }
+
+    /**
+     * Entrypoint to create {@link ArchModules} by partitioning a set of {@link JavaClass classes} into packages
+     * defined by specific "root classes". The {@code rootClassPredicate} will determine which {@link JavaClass classes}
+     * are root classes. {@link ArchModules} are formed by grouping together all classes that reside in the same package
+     * or a subpackage of the respective root class. Thus, the packages of the defined root classes may not overlap,
+     * i.e. no root class must reside in the same or a subpackage of another root class. All {@link JavaClass classes}
+     * not contained in any package induced by a root class will be ignored from the derived {@link ArchModules}.<br>
+     *
+     * <p>
+     * Take for example the following three classes:<br><br>
+     * {@code com.example.module.one.SomeClass}<br>
+     * {@code com.example.module.one.AnotherClass}<br>
+     * {@code com.example.module.two.SomeOtherClass}<br><br>
+     * Then the {@code rootClassPredicate}
+     * <pre><code>
+     * javaClass -> javaClass.getSimpleName().startsWith("Some")
+     * </code></pre>
+     * would pick the
+     * classes {@code SomeClass} and {@code SomeOtherClass} and derive the {@link ArchModules} from their packages, which
+     * in turn would put {@code SomeClass} and {@code AnotherClass} in the same {@link ArchModule} derived from {@code SomeClass}.
+     * </p>
+     *
+     * @param rootClassPredicate A {@link Predicate} determining which {@link JavaClass} is a "root class", thus defining a
+     *                           {@link ArchModule} by its package
+     * @return A fluent API to further customize how to create {@link ArchModules}
+     */
+    @PublicAPI(usage = ACCESS)
+    public static Creator defineByRootClasses(Predicate<? super JavaClass> rootClassPredicate) {
+        return defineBy(identifierByRootClass(rootClassPredicate));
+    }
+
+    private static IdentifierAssociation identifierByRootClass(Predicate<? super JavaClass> rootClassPredicate) {
+        return new IdentifierAssociation() {
+            private final Map<String, Identifier> packageToIdentifier = new HashMap<>();
+
+            @Override
+            public void init(Collection<JavaClass> allClasses) {
+                allClasses.stream().filter(rootClassPredicate).forEach(rootClass -> {
+                    packageToIdentifier.keySet().forEach(pkg -> {
+                        if (packagesOverlap(pkg, rootClass.getPackageName())) {
+                            throw new IllegalArgumentException(String.format(
+                                    "modules from root classes would overlap in '%s' and '%s'", pkg, rootClass.getPackageName()));
+                        }
+                    });
+                    packageToIdentifier.put(rootClass.getPackageName(), Identifier.from(rootClass.getPackageName()));
+                });
+            }
+
+            private boolean packagesOverlap(String firstPackageName, String secondPackageName) {
+                return packageContains(firstPackageName, secondPackageName) || packageContains(secondPackageName, firstPackageName);
+            }
+
+            private boolean packageContains(String parentPackage, String childPackage) {
+                return childPackage.equals(parentPackage) || childPackage.startsWith(parentPackage + ".");
+            }
+
+            @Override
+            public Identifier associate(JavaClass javaClass) {
+                return packageToIdentifier.entrySet().stream()
+                        .filter(it -> packageContains(it.getKey(), javaClass.getPackageName()))
+                        .findFirst()
+                        .map(Map.Entry::getValue)
+                        .orElse(Identifier.ignore());
+            }
         };
     }
 
@@ -191,8 +261,31 @@ public final class ArchModules extends ForwardingCollection<ArchModule> {
      * @return A fluent API to further customize how to create {@link ArchModules}
      */
     @PublicAPI(usage = ACCESS)
-    public static Creator defineBy(Function<JavaClass, Identifier> identifierFunction) {
+    public static Creator defineBy(IdentifierAssociation identifierFunction) {
         return new Creator(checkNotNull(identifierFunction));
+    }
+
+    /**
+     * Defines which {@link JavaClass classes} belong to the same {@link ArchModule.Identifier} and thus will eventually
+     * end up in the same {@link ArchModule}.
+     */
+    @FunctionalInterface
+    @PublicAPI(usage = INHERITANCE)
+    public interface IdentifierAssociation {
+        /**
+         * An optional hook to add custom logic considering all {@link JavaClass classes} that will be associated with an
+         * {@link ArchModule.Identifier}, before {@link #associate(JavaClass)} will be called on any of these {@link JavaClass classes}.
+         */
+        default void init(Collection<JavaClass> allClasses) {
+        }
+
+        /**
+         * Associates a {@link JavaClass} with a specific {@link ArchModule.Identifier} which will eventually put this
+         * {@link JavaClass} into the {@link ArchModule} with the respective {@link ArchModule.Identifier}.
+         * @param javaClass The {@link JavaClass} to associate with an {@link ArchModule.Identifier}
+         * @return The associated {@link ArchModule.Identifier}
+         */
+        Identifier associate(JavaClass javaClass);
     }
 
     /**
@@ -200,15 +293,15 @@ public final class ArchModules extends ForwardingCollection<ArchModule> {
      */
     @PublicAPI(usage = ACCESS)
     public static final class Creator {
-        private final Function<JavaClass, Identifier> identifierFunction;
+        private final IdentifierAssociation identifierAssociation;
         private final Function<Identifier, String> deriveNameFunction;
 
-        private Creator(Function<JavaClass, Identifier> identifierFunction) {
-            this(identifierFunction, DEFAULT_NAMING_STRATEGY);
+        private Creator(IdentifierAssociation identifierAssociation) {
+            this(identifierAssociation, DEFAULT_NAMING_STRATEGY);
         }
 
-        private Creator(Function<JavaClass, Identifier> identifierFunction, Function<Identifier, String> deriveNameFunction) {
-            this.identifierFunction = checkNotNull(identifierFunction);
+        private Creator(IdentifierAssociation identifierAssociation, Function<Identifier, String> deriveNameFunction) {
+            this.identifierAssociation = checkNotNull(identifierAssociation);
             this.deriveNameFunction = checkNotNull(deriveNameFunction);
         }
 
@@ -231,7 +324,7 @@ public final class ArchModules extends ForwardingCollection<ArchModule> {
          */
         @PublicAPI(usage = ACCESS)
         public Creator deriveNameFromPattern(final String namingPattern) {
-            return new Creator(identifierFunction, identifier -> {
+            return new Creator(identifierAssociation, identifier -> {
                 String result = namingPattern;
                 for (int i = 1; i <= identifier.getNumberOfParts(); i++) {
                     result = result
@@ -266,9 +359,11 @@ public final class ArchModules extends ForwardingCollection<ArchModule> {
         }
 
         private SetMultimap<Identifier, JavaClass> groupClassesByIdentifier(JavaClasses classes) {
+            identifierAssociation.init(classes);
+
             SetMultimap<Identifier, JavaClass> classesByIdentifier = HashMultimap.create();
             for (JavaClass javaClass : classes) {
-                Identifier identifier = identifierFunction.apply(javaClass);
+                Identifier identifier = identifierAssociation.associate(javaClass);
                 if (identifier.shouldBeConsidered()) {
                     classesByIdentifier.put(identifier, javaClass);
                 }
