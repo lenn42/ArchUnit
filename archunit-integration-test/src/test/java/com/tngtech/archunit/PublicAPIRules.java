@@ -113,7 +113,7 @@ public class PublicAPIRules {
     public static final ArchRule only_entry_point_and_syntax_interfaces_should_be_public =
             classes()
                     .that().resideInAPackage("..syntax..")
-                    .and().haveNameNotMatching(".*" + ArchRuleDefinition.class.getSimpleName() + ".*")
+                    .and().haveNameNotMatching(".*RuleDefinition.*")
                     .and().areNotInterfaces()
                     .and().areNotAnnotatedWith(Internal.class)
                     .should().notBePublic()

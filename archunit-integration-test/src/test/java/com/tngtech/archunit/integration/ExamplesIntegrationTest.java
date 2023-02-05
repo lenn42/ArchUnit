@@ -23,6 +23,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.tngtech.archunit.ArchConfiguration;
 import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.example.AppModule;
 import com.tngtech.archunit.example.cycles.complexcycles.slice1.ClassBeingCalledInSliceOne;
 import com.tngtech.archunit.example.cycles.complexcycles.slice1.ClassOfMinimalCycleCallingSliceTwo;
 import com.tngtech.archunit.example.cycles.complexcycles.slice1.SliceOneCallingConstructorInSliceTwoAndMethodInSliceThree;
@@ -133,6 +134,7 @@ import com.tngtech.archunit.example.onionarchitecture.domain.service.OrderQuanti
 import com.tngtech.archunit.example.onionarchitecture.domain.service.ProductName;
 import com.tngtech.archunit.example.onionarchitecture.domain.service.ShoppingService;
 import com.tngtech.archunit.example.shopping.address.Address;
+import com.tngtech.archunit.example.shopping.address.AddressController;
 import com.tngtech.archunit.example.shopping.catalog.ProductCatalog;
 import com.tngtech.archunit.example.shopping.customer.Customer;
 import com.tngtech.archunit.example.shopping.importer.ProductImport;
@@ -146,6 +148,7 @@ import com.tngtech.archunit.testutils.ExpectedClass;
 import com.tngtech.archunit.testutils.ExpectedConstructor;
 import com.tngtech.archunit.testutils.ExpectedField;
 import com.tngtech.archunit.testutils.ExpectedMethod;
+import com.tngtech.archunit.testutils.ExpectedModuleDependency;
 import com.tngtech.archunit.testutils.ExpectedTestFailures;
 import com.tngtech.archunit.testutils.MessageAssertionChain;
 import com.tngtech.archunit.testutils.ResultStoringExtension;
@@ -179,6 +182,7 @@ import static com.tngtech.archunit.testutils.ExpectedAccess.callFromConstructor;
 import static com.tngtech.archunit.testutils.ExpectedAccess.callFromMethod;
 import static com.tngtech.archunit.testutils.ExpectedAccess.callFromStaticInitializer;
 import static com.tngtech.archunit.testutils.ExpectedDependency.annotatedClass;
+import static com.tngtech.archunit.testutils.ExpectedDependency.annotatedPackageInfo;
 import static com.tngtech.archunit.testutils.ExpectedDependency.annotatedParameter;
 import static com.tngtech.archunit.testutils.ExpectedDependency.constructor;
 import static com.tngtech.archunit.testutils.ExpectedDependency.field;
@@ -191,6 +195,7 @@ import static com.tngtech.archunit.testutils.ExpectedDependency.inheritanceFrom;
 import static com.tngtech.archunit.testutils.ExpectedDependency.method;
 import static com.tngtech.archunit.testutils.ExpectedDependency.typeParameter;
 import static com.tngtech.archunit.testutils.ExpectedLocation.javaClass;
+import static com.tngtech.archunit.testutils.ExpectedMessage.violation;
 import static com.tngtech.archunit.testutils.ExpectedNaming.simpleNameOf;
 import static com.tngtech.archunit.testutils.ExpectedNaming.simpleNameOfAnonymousClassOf;
 import static com.tngtech.archunit.testutils.ExpectedViolation.clazz;
@@ -1127,6 +1132,67 @@ class ExamplesIntegrationTest {
     }
 
     @TestFactory
+    Stream<DynamicTest> ModulesTest() {
+        ExpectedTestFailures expectedFailures = ExpectedTestFailures
+                .forTests(
+                        com.tngtech.archunit.exampletest.ModulesTest.class,
+                        com.tngtech.archunit.exampletest.junit4.ModulesTest.class,
+                        com.tngtech.archunit.exampletest.junit5.ModulesTest.class);
+
+        Consumer<ExpectedTestFailures> expectModulesViolations =
+                expected -> expected
+                        .by(ExpectedModuleDependency.uncontainedFrom(AddressController.class).to(AbstractController.class))
+                        .by(ExpectedModuleDependency.uncontainedFrom(AddressController.class).to(AbstractController.class))
+
+                        .by(ExpectedModuleDependency.fromModule("Address").toModule("Catalog")
+                                .including(field(Address.class, "productCatalog").ofType(ProductCatalog.class)))
+
+                        .by(ExpectedModuleDependency.fromModule("Product").toModule("Customer")
+                                .including(field(Product.class, "customer").ofType(Customer.class)))
+
+                        .by(ExpectedModuleDependency.fromModule("Product").toModule("Order")
+                                .including(method(Product.class, "getOrder").withReturnType(Order.class)))
+
+                        .by(ExpectedModuleDependency.fromModule("Customer").toModule("Order")
+                                .including(method(Customer.class, "addOrder").withParameter(Order.class)))
+
+                        .by(ExpectedModuleDependency.fromModule("Catalog").toModule("Order")
+                                .including(callFromMethod(ProductCatalog.class, "gonnaDoSomethingIllegalWithOrder")
+                                        .toConstructor(Order.class).inLine(12).asDependency())
+                                .including(callFromMethod(ProductCatalog.class, "gonnaDoSomethingIllegalWithOrder")
+                                        .toMethod(Order.class, "addProducts", Set.class).inLine(16).asDependency()))
+
+                        .by(ExpectedModuleDependency.fromModule("Importer").toModule("Customer")
+                                .including(callFromMethod(ProductImport.class, "getCustomer")
+                                        .toConstructor(Customer.class).inLine(14).asDependency())
+                                .including(method(ProductImport.class, "getCustomer")
+                                        .withReturnType(Customer.class)))
+
+                        .by(ExpectedModuleDependency.fromModule("Order").toModule("Address")
+                                .including(method(Order.class, "report")
+                                        .withParameter(Address.class)));
+
+        expectedFailures = expectedFailures
+                .ofRule(String.format("modules defined by annotation @%s should respect their declared dependencies within ..example..",
+                        AppModule.class.getSimpleName()));
+        expectModulesViolations.accept(expectedFailures);
+
+        expectedFailures = expectedFailures
+                .ofRule(String.format("modules defined by root classes annotated with @%s ", AppModule.class.getSimpleName())
+                        + String.format("deriving module from root class by annotation @%s ", AppModule.class.getSimpleName())
+                        + "should respect their declared dependencies within ..example..");
+        expectModulesViolations.accept(expectedFailures);
+
+        expectedFailures = expectedFailures
+                .ofRule(String.format("modules defined by root classes with annotation @%s ", AppModule.class.getSimpleName())
+                        + String.format("deriving module from @%s(name) ", AppModule.class.getSimpleName())
+                        + "should respect their declared dependencies within ..example..");
+        expectModulesViolations.accept(expectedFailures);
+
+        return expectedFailures.toDynamicTests();
+    }
+
+    @TestFactory
     Stream<DynamicTest> NamingConventionTest() {
         return ExpectedTestFailures
                 .forTests(
@@ -1212,6 +1278,11 @@ class ExamplesIntegrationTest {
                         ProductCatalog.class.getName(), Product.class.getName(), Order.class.getName()))
                 .by(field(Address.class, "productCatalog")
                         .ofType(ProductCatalog.class))
+                .by(inheritanceFrom(AddressController.class)
+                        .extending(AbstractController.class))
+                .by(callFromConstructor(AddressController.class)
+                        .toConstructor(AbstractController.class)
+                        .inLine(6).asDependency())
                 .by(field(Product.class, "customer")
                         .ofType(Customer.class))
                 .by(method(Customer.class, "addOrder")
@@ -1222,6 +1293,13 @@ class ExamplesIntegrationTest {
                         .withReturnType(Customer.class))
                 .by(method(Order.class, "report")
                         .withParameter(Address.class))
+                .by(annotatedPackageInfo(Address.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(annotatedPackageInfo(ProductCatalog.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(annotatedPackageInfo(Customer.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(annotatedPackageInfo(ProductImport.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(annotatedPackageInfo(Order.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(annotatedPackageInfo(Product.class.getPackage().getName()).annotatedWith(AppModule.class))
+                .by(violation("Class com.tngtech.archunit.example.shopping.xml.package-info is not contained in any component"))
 
                 .toDynamicTests();
     }
