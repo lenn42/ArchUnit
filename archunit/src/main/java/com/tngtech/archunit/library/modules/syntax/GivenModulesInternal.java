@@ -45,17 +45,22 @@ class GivenModulesInternal<DESCRIPTOR extends ArchModule.Descriptor> implements 
     }
 
     @Override
-    public GivenConjunction<ArchModule<DESCRIPTOR>> and(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public ModulesShould<DESCRIPTOR> should() {
+        return new ModulesShouldInternal<>(this::should);
+    }
+
+    @Override
+    public GivenModules<DESCRIPTOR> and(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.and(predicate));
     }
 
     @Override
-    public GivenConjunction<ArchModule<DESCRIPTOR>> or(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public GivenModules<DESCRIPTOR> or(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.or(predicate));
     }
 
     @Override
-    public GivenConjunction<ArchModule<DESCRIPTOR>> that(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public GivenModules<DESCRIPTOR> that(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.that(predicate));
     }
 

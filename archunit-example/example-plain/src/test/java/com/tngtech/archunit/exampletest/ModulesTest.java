@@ -1,6 +1,6 @@
 package com.tngtech.archunit.exampletest;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -10,11 +10,8 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaPackage;
-import com.tngtech.archunit.core.domain.PackageMatcher;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.example.AppModule;
-import com.tngtech.archunit.lang.ArchCondition;
-import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.library.modules.AnnotationDescriptor;
 import com.tngtech.archunit.library.modules.ArchModule;
 import com.tngtech.archunit.library.modules.ModuleDependency;
@@ -22,9 +19,12 @@ import com.tngtech.archunit.library.modules.syntax.DescriptorFunction;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import static com.tngtech.archunit.lang.SimpleConditionEvent.violated;
+import static com.tngtech.archunit.base.DescribedPredicate.alwaysTrue;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
+import static com.tngtech.archunit.library.modules.syntax.ModuleDependencyScope.consideringOnlyDependenciesInAnyPackage;
 import static com.tngtech.archunit.library.modules.syntax.ModuleRuleDefinition.modules;
-import static java.util.stream.Collectors.toSet;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
 
 @Category(Example.class)
 public class ModulesTest {
@@ -39,7 +39,11 @@ public class ModulesTest {
     public void modules_should_respect_their_declared_dependencies__use_annotation_API() {
         modules()
                 .definedByAnnotation(AppModule.class)
-                .should(respectTheirDeclaredDependenciesWithin("..example.."))
+                .should().respectTheirAllowedDependencies(
+                        declaredByDescriptorAnnotation(),
+                        consideringOnlyDependenciesInAnyPackage("..example..")
+                )
+                .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class))
                 .check(classes);
     }
 
@@ -63,7 +67,11 @@ public class ModulesTest {
                             return new AnnotationDescriptor<>(module.name(), module);
                         })
                 )
-                .should(respectTheirDeclaredDependenciesWithin("..example.."))
+                .should().respectTheirAllowedDependencies(
+                        declaredByDescriptorAnnotation(),
+                        consideringOnlyDependenciesInAnyPackage("..example..")
+                )
+                .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class))
                 .check(classes);
     }
 
@@ -77,8 +85,20 @@ public class ModulesTest {
         modules()
                 .definedBy(identifierFromModulesAnnotation())
                 .derivingModule(fromModulesAnnotation())
-                .should(respectTheirDeclaredDependenciesWithin("..example.."))
+                .should().respectTheirAllowedDependencies(
+                        declaredByDescriptorAnnotation(),
+                        consideringOnlyDependenciesInAnyPackage("..example..")
+                )
+                .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class))
                 .check(classes);
+    }
+
+    private static DescribedPredicate<ModuleDependency<AnnotationDescriptor<AppModule>>> declaredByDescriptorAnnotation() {
+        return DescribedPredicate.describe("declared by descriptor annotation", moduleDependency -> {
+            AppModule descriptor = moduleDependency.getOrigin().getDescriptor().getAnnotation();
+            List<String> allowedDependencies = stream(descriptor.allowedDependencies()).collect(toList());
+            return allowedDependencies.contains(moduleDependency.getTarget().getName());
+        });
     }
 
     private static IdentifierFromAnnotation identifierFromModulesAnnotation() {
@@ -92,34 +112,6 @@ public class ModulesTest {
                     AppModule module = rootClass.getAnnotationOfType(AppModule.class);
                     return new AnnotationDescriptor<>(module.name(), module);
                 });
-    }
-
-    private static DeclaredDependenciesCondition respectTheirDeclaredDependenciesWithin(String applicationRootPackageIdentifier) {
-        return new DeclaredDependenciesCondition(applicationRootPackageIdentifier);
-    }
-
-    private static class DeclaredDependenciesCondition extends ArchCondition<ArchModule<AnnotationDescriptor<AppModule>>> {
-        private final PackageMatcher applicationRootPackageMatcher;
-
-        DeclaredDependenciesCondition(String applicationRootPackageIdentifier) {
-            super("respect their declared dependencies within %s", applicationRootPackageIdentifier);
-            this.applicationRootPackageMatcher = PackageMatcher.of(applicationRootPackageIdentifier);
-        }
-
-        @Override
-        public void check(ArchModule<AnnotationDescriptor<AppModule>> module, ConditionEvents events) {
-            Set<ModuleDependency<AnnotationDescriptor<AppModule>>> actualDependencies = module.getModuleDependenciesFromSelf();
-            Set<String> allowedDependencyTargets = Arrays.stream(module.getDescriptor().getAnnotation().allowedDependencies()).collect(toSet());
-
-            actualDependencies.stream()
-                    .filter(it -> !allowedDependencyTargets.contains(it.getTarget().getName()))
-                    .forEach(it -> events.add(violated(it, it.getDescription())));
-
-            module.getUndefinedDependencies().stream()
-                    .filter(it -> !it.getTargetClass().isEquivalentTo(AppModule.class))
-                    .filter(it -> applicationRootPackageMatcher.matches(it.getTargetClass().getPackageName()))
-                    .forEach(it -> events.add(violated(it, "Dependency not contained in any module: " + it.getDescription())));
-        }
     }
 
     private static class IdentifierFromAnnotation extends DescribedFunction<JavaClass, ArchModule.Identifier> {
