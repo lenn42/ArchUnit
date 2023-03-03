@@ -28,6 +28,7 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.EvaluationResult;
+import com.tngtech.archunit.library.cycle_detection.rules.CycleArchCondition;
 import com.tngtech.archunit.library.modules.ArchModule;
 import com.tngtech.archunit.library.modules.ModuleDependency;
 
@@ -46,6 +47,19 @@ class ModulesShouldInternal<DESCRIPTOR extends ArchModule.Descriptor> implements
         return new ModulesRuleInternal<>(
                 createRule,
                 relevantClassDependencyPredicate -> new RespectTheirAllowedDependenciesCondition<>(allowedDependencyPredicate.forSubtype(), dependencyScope, relevantClassDependencyPredicate)
+        );
+    }
+
+    @Override
+    public ModulesRule beFreeOfCycles() {
+        return new ModulesRuleInternal<>(
+                createRule,
+                relevantClassDependencyPredicate -> CycleArchCondition.<ArchModule<DESCRIPTOR>>builder()
+                        .retrieveClassesBy(Function.identity())
+                        .retrieveDescriptionBy(ArchModule::getName)
+                        .retrieveOutgoingDependenciesBy(ArchModule::getClassDependenciesFromSelf)
+                        .onlyConsiderDependencies(relevantClassDependencyPredicate)
+                        .build()
         );
     }
 
