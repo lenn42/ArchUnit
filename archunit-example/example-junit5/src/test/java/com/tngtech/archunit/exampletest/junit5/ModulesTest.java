@@ -10,6 +10,7 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaPackage;
 import com.tngtech.archunit.example.AppModule;
+import com.tngtech.archunit.example.ModuleApi;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.junit.ArchTest;
@@ -20,7 +21,9 @@ import com.tngtech.archunit.library.modules.ModuleDependency;
 import com.tngtech.archunit.library.modules.syntax.DescriptorFunction;
 
 import static com.tngtech.archunit.base.DescribedPredicate.alwaysTrue;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf;
+import static com.tngtech.archunit.core.domain.properties.CanBeAnnotated.Predicates.annotatedWith;
+import static com.tngtech.archunit.lang.conditions.ArchPredicates.are;
 import static com.tngtech.archunit.library.modules.syntax.ModuleDependencyScope.consideringOnlyDependenciesInAnyPackage;
 import static com.tngtech.archunit.library.modules.syntax.ModuleRuleDefinition.modules;
 import static java.util.Arrays.stream;
@@ -43,7 +46,7 @@ public class ModulesTest {
                             declaredByDescriptorAnnotation(),
                             consideringOnlyDependenciesInAnyPackage("..example..")
                     )
-                    .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class));
+                    .ignoreDependency(alwaysTrue(), belongToAnyOf(AppModule.class, ModuleApi.class));
 
     /**
      * This example demonstrates how to use the slightly more generic root class API to define modules.
@@ -69,7 +72,7 @@ public class ModulesTest {
                             declaredByDescriptorAnnotation(),
                             consideringOnlyDependenciesInAnyPackage("..example..")
                     )
-                    .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class));
+                    .ignoreDependency(alwaysTrue(), belongToAnyOf(AppModule.class, ModuleApi.class));
 
     /**
      * This example demonstrates how to use the generic API to define modules.
@@ -85,7 +88,16 @@ public class ModulesTest {
                             declaredByDescriptorAnnotation(),
                             consideringOnlyDependenciesInAnyPackage("..example..")
                     )
-                    .ignoreDependency(alwaysTrue(), equivalentTo(AppModule.class));
+                    .ignoreDependency(alwaysTrue(), belongToAnyOf(AppModule.class, ModuleApi.class));
+
+    /**
+     * This example demonstrates how to check that modules only depend on each other through a specific API.
+     */
+    @ArchTest
+    static ArchRule modules_should_only_depend_on_each_other_through_module_API =
+            modules()
+                    .definedByAnnotation(AppModule.class)
+                    .should().onlyDependOnEachOtherThroughClassesThat(are(annotatedWith(ModuleApi.class)));
 
     /**
      * This example demonstrates how to check for cyclic dependencies between modules.

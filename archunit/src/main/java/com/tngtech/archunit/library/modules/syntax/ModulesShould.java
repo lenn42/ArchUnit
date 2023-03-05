@@ -18,6 +18,7 @@ package com.tngtech.archunit.library.modules.syntax;
 import com.tngtech.archunit.PublicAPI;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.modules.ArchModule;
@@ -45,6 +46,18 @@ public interface ModulesShould<DESCRIPTOR extends ArchModule.Descriptor> {
             DescribedPredicate<? super ModuleDependency<DESCRIPTOR>> allowedDependencyPredicate,
             ModuleDependencyScope dependencyScope
     );
+
+    /**
+     * Checks that the {@link Dependency#getTargetClass() target classes} of each {@link Dependency}
+     * that originate from one {@link ArchModule} and target another {@link ArchModule} satisfy
+     * the passed {@code predicate}.
+     *
+     * @param predicate A {@link DescribedPredicate} to determine which {@link Dependency#getTargetClass() target classes}
+     *                  of {@link Dependency dependencies} are allowed.
+     * @return A {@link ArchRule} to be checked against a set of {@link JavaClasses}
+     */
+    @PublicAPI(usage = ACCESS)
+    ModulesRule onlyDependOnEachOtherThroughClassesThat(DescribedPredicate<? super JavaClass> predicate);
 
     /**
      * Checks that the {@link ArchModule}s under consideration don't have any cyclic dependencies within their
