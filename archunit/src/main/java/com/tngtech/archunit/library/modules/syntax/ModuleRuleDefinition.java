@@ -24,9 +24,10 @@ import com.tngtech.archunit.base.DescribedFunction;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.modules.AnnotationDescriptor;
 import com.tngtech.archunit.library.modules.ArchModule;
 import com.tngtech.archunit.library.modules.ArchModules;
+import com.tngtech.archunit.library.modules.syntax.AbstractGivenModulesInternal.GivenModulesByAnnotationInternal;
+import com.tngtech.archunit.library.modules.syntax.AbstractGivenModulesInternal.GivenModulesInternal;
 
 import static com.tngtech.archunit.PublicAPI.Usage.ACCESS;
 
@@ -73,8 +74,8 @@ public final class ModuleRuleDefinition {
          * @see ArchModules#defineByAnnotation(Class)
          */
         @PublicAPI(usage = ACCESS)
-        public <A extends Annotation> GivenModules<AnnotationDescriptor<A>> definedByAnnotation(Class<A> annotationType) {
-            return new GivenModulesInternal<>(classes -> ArchModules
+        public <A extends Annotation> GivenModulesByAnnotation<A> definedByAnnotation(Class<A> annotationType) {
+            return new GivenModulesByAnnotationInternal<>(classes -> ArchModules
                     .defineByAnnotation(annotationType)
                     .modularize(classes)
             ).as("modules defined by annotation @%s", annotationType.getSimpleName());
@@ -84,8 +85,8 @@ public final class ModuleRuleDefinition {
          * @see ArchModules#defineByAnnotation(Class, Function)
          */
         @PublicAPI(usage = ACCESS)
-        public <A extends Annotation> GivenModules<AnnotationDescriptor<A>> definedByAnnotation(Class<A> annotationType, Function<A, String> nameFunction) {
-            return new GivenModulesInternal<>(classes -> ArchModules
+        public <A extends Annotation> GivenModulesByAnnotation<A> definedByAnnotation(Class<A> annotationType, Function<A, String> nameFunction) {
+            return new GivenModulesByAnnotationInternal<>(classes -> ArchModules
                     .defineByAnnotation(annotationType, nameFunction)
                     .modularize(classes)
             ).as("modules defined by annotation @%s", annotationType.getSimpleName());

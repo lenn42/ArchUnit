@@ -9,6 +9,7 @@ import com.tngtech.archunit.base.DescribedFunction;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.library.modules.syntax.DescriptorFunction;
 import com.tngtech.archunit.library.modules.syntax.GivenModules;
+import com.tngtech.archunit.library.modules.syntax.GivenModulesByAnnotation;
 import com.tngtech.archunit.library.modules.syntax.ModuleDependencyScope;
 import com.tngtech.archunit.library.modules.syntax.ModuleRuleDefinition;
 import com.tngtech.archunit.testutil.syntax.Parameter;
@@ -26,11 +27,11 @@ public class RandomModulesSyntaxTest extends RandomSyntaxTestBase {
     public static List<List<?>> random_rules() {
         return createRandomRulesForSeeds(
                 new RandomSyntaxSeed<>(
-                        givenModulesClass(),
+                        givenModulesByAnnotationClass(),
                         ModuleRuleDefinition.modules().definedByAnnotation(RandomSyntaxModule.class),
                         "modules defined by annotation @" + RandomSyntaxModule.class.getSimpleName()),
                 new RandomSyntaxSeed<>(
-                        givenModulesClass(),
+                        givenModulesByAnnotationClass(),
                         ModuleRuleDefinition.modules().definedByAnnotation(RandomSyntaxModule.class, RandomSyntaxModule::name),
                         "modules defined by annotation @" + RandomSyntaxModule.class.getSimpleName()),
                 new RandomSyntaxSeed<>(
@@ -49,28 +50,42 @@ public class RandomModulesSyntaxTest extends RandomSyntaxTestBase {
     }
 
     @SafeVarargs
-    private static List<List<?>> createRandomRulesForSeeds(RandomSyntaxSeed<GivenModules<?>>... seeds) {
+    private static List<List<?>> createRandomRulesForSeeds(RandomSyntaxSeed<? extends GivenModules<?>>... seeds) {
         return Arrays.stream(seeds)
                 .map(seed -> RandomSyntaxTestBase.createRandomRules(
                         RandomRulesBlueprint
                                 .seed(seed)
                                 .methodChoiceStrategy(chooseAllArchUnitSyntaxMethods().exceptMethodsWithName("ignoreDependency"))
-                                .parameterProviders(new SingleParameterProvider(ModuleDependencyScope.class) {
-                                    @Override
-                                    public Parameter get(String methodName, TypeToken<?> type) {
-                                        ModuleDependencyScope dependencyScope = randomElement(
-                                                ModuleDependencyScope.consideringAllDependencies(),
-                                                ModuleDependencyScope.consideringOnlyDependenciesBetweenModules(),
-                                                ModuleDependencyScope.consideringOnlyDependenciesInAnyPackage("..test..")
-                                        );
-                                        return new Parameter(dependencyScope, dependencyScope.getDescription());
-                                    }
+                                .parameterProviders(
+                                        new SingleParameterProvider(ModuleDependencyScope.class) {
+                                            @Override
+                                            public Parameter get(String methodName, TypeToken<?> type) {
+                                                ModuleDependencyScope dependencyScope = randomElement(
+                                                        ModuleDependencyScope.consideringAllDependencies(),
+                                                        ModuleDependencyScope.consideringOnlyDependenciesBetweenModules(),
+                                                        ModuleDependencyScope.consideringOnlyDependenciesInAnyPackage("..test..")
+                                                );
+                                                return new Parameter(dependencyScope, dependencyScope.getDescription());
+                                            }
 
-                                    @SafeVarargs
-                                    private final <T> T randomElement(T... elements) {
-                                        return elements[random.nextInt(elements.length)];
-                                    }
-                                })
+                                            @SafeVarargs
+                                            private final <T> T randomElement(T... elements) {
+                                                return elements[random.nextInt(elements.length)];
+                                            }
+                                        },
+                                        new SingleParameterProvider(String.class) {
+
+                                            @Override
+                                            protected boolean canHandle(String methodName, Class<?> type) {
+                                                return methodName.equals("respectTheirAllowedDependenciesDeclaredIn") && super.canHandle(methodName, type);
+                                            }
+
+                                            @Override
+                                            public Parameter get(String methodName, TypeToken<?> type) {
+                                                return new Parameter("allowedDependencies", "'allowedDependencies'");
+                                            }
+                                        }
+                                )
                                 .descriptionReplacements(
                                         new ReplaceEverythingSoFar("as '([^']+)'.*", "$1"),
                                         new SingleStringReplacement("meta annotated", "meta-annotated")
@@ -86,7 +101,15 @@ public class RandomModulesSyntaxTest extends RandomSyntaxTestBase {
         return (Class) GivenModules.class;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Class<GivenModulesByAnnotation<RandomSyntaxModule>> givenModulesByAnnotationClass() {
+        return (Class) GivenModulesByAnnotation.class;
+    }
+
+    @SuppressWarnings("unused")
     private @interface RandomSyntaxModule {
         String name();
+
+        String[] allowedDependencies() default {};
     }
 }
