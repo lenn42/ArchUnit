@@ -1142,7 +1142,7 @@ class ExamplesIntegrationTest {
                         com.tngtech.archunit.exampletest.junit4.ModulesTest.class,
                         com.tngtech.archunit.exampletest.junit5.ModulesTest.class);
 
-        Consumer<ExpectedTestFailures> expectModulesViolations =
+        Consumer<ExpectedTestFailures> expectRespectTheirDeclaredDependenciesViolations =
                 expected -> expected
                         .by(ExpectedModuleDependency.uncontainedFrom(AddressController.class).to(AbstractController.class))
                         .by(ExpectedModuleDependency.uncontainedFrom(AddressController.class).to(AbstractController.class))
@@ -1176,35 +1176,42 @@ class ExamplesIntegrationTest {
                                         .withParameter(Address.class)));
 
         expectedFailures = expectedFailures
-                .ofRule(String.format("modules defined by annotation @%s should respect their allowed dependencies declared in 'allowedDependencies'"
-                                + " considering only dependencies in any package ['..example..']",
-                        AppModule.class.getSimpleName()));
-        expectModulesViolations.accept(expectedFailures);
-
-        expectedFailures = expectedFailures
                 .ofRule(String.format("modules defined by annotation @%s should respect their allowed dependencies declared by descriptor annotation"
                                 + " considering only dependencies in any package ['..example..']",
                         AppModule.class.getSimpleName()));
-        expectModulesViolations.accept(expectedFailures);
+        expectRespectTheirDeclaredDependenciesViolations.accept(expectedFailures);
 
         expectedFailures = expectedFailures
                 .ofRule(String.format("modules defined by root classes annotated with @%s ", AppModule.class.getSimpleName())
                         + String.format("deriving module from root class by annotation @%s ", AppModule.class.getSimpleName())
                         + "should respect their allowed dependencies declared by descriptor annotation considering only dependencies in any package ['..example..']");
-        expectModulesViolations.accept(expectedFailures);
+        expectRespectTheirDeclaredDependenciesViolations.accept(expectedFailures);
 
         expectedFailures = expectedFailures
                 .ofRule(String.format("modules defined by root classes with annotation @%s ", AppModule.class.getSimpleName())
                         + String.format("deriving module from @%s(name) ", AppModule.class.getSimpleName())
                         + "should respect their allowed dependencies declared by descriptor annotation considering only dependencies in any package ['..example..']");
-        expectModulesViolations.accept(expectedFailures);
+        expectRespectTheirDeclaredDependenciesViolations.accept(expectedFailures);
 
-        expectedFailures.ofRule("modules defined by annotation @AppModule should only depend on each other through classes that are annotated with @ModuleApi")
-                .by(field(Address.class, "productCatalog").ofType(ProductCatalog.class))
-                .by(field(ProductImport.class, "productCatalog").ofType(ProductCatalog.class))
-                .by(field(ProductImport.class, "xmlType").ofType(XmlTypes.class))
-                .by(callFromMethod(ProductImport.class, "parse", byte[].class).toConstructor(ProductCatalog.class).inLine(21).asDependency())
-                .by(method(ProductImport.class, "parse").withReturnType(ProductCatalog.class));
+        Consumer<ExpectedTestFailures> expectDependOnEachOtherThroughViolations =
+                expected -> expected
+                        .by(field(Address.class, "productCatalog").ofType(ProductCatalog.class))
+                        .by(field(ProductImport.class, "productCatalog").ofType(ProductCatalog.class))
+                        .by(field(ProductImport.class, "xmlType").ofType(XmlTypes.class))
+                        .by(callFromMethod(ProductImport.class, "parse", byte[].class).toConstructor(ProductCatalog.class).inLine(21).asDependency())
+                        .by(method(ProductImport.class, "parse").withReturnType(ProductCatalog.class));
+
+        expectedFailures
+                .ofRule("modules defined by annotation @AppModule should only depend on each other through classes that are annotated with @ModuleApi");
+        expectDependOnEachOtherThroughViolations.accept(expectedFailures);
+
+        expectedFailures = expectedFailures
+                .ofRule(String.format("modules defined by annotation @%s should respect their allowed dependencies declared in 'allowedDependencies' "
+                                + "considering only dependencies in any package ['..example..'] "
+                                + "and should only depend on each other through packages declared in 'exposedPackages'",
+                        AppModule.class.getSimpleName()));
+        expectRespectTheirDeclaredDependenciesViolations.accept(expectedFailures);
+        expectDependOnEachOtherThroughViolations.accept(expectedFailures);
 
         expectedFailures.ofRule("modules defined by annotation @AppModule should be free of cycles")
                 .by(cycle()
