@@ -21,14 +21,13 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.lang.syntax.elements.GivenConjunction;
 import com.tngtech.archunit.library.modules.ArchModule;
 import com.tngtech.archunit.library.modules.ArchModules;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.all;
 
-class GivenModulesInternal<DESCRIPTOR extends ArchModule.Descriptor> implements GivenModules<DESCRIPTOR>, GivenConjunction<ArchModule<DESCRIPTOR>> {
+class GivenModulesInternal<DESCRIPTOR extends ArchModule.Descriptor> implements GivenModules<DESCRIPTOR>, GivenModulesConjunction<DESCRIPTOR> {
     private final ModulesTransformer<DESCRIPTOR> transformer;
 
     GivenModulesInternal(Function<JavaClasses, ArchModules<DESCRIPTOR>> createModules) {
@@ -50,17 +49,17 @@ class GivenModulesInternal<DESCRIPTOR extends ArchModule.Descriptor> implements 
     }
 
     @Override
-    public GivenModules<DESCRIPTOR> and(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public GivenModulesInternal<DESCRIPTOR> and(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.and(predicate));
     }
 
     @Override
-    public GivenModules<DESCRIPTOR> or(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public GivenModulesInternal<DESCRIPTOR> or(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.or(predicate));
     }
 
     @Override
-    public GivenModules<DESCRIPTOR> that(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
+    public GivenModulesInternal<DESCRIPTOR> that(DescribedPredicate<? super ArchModule<DESCRIPTOR>> predicate) {
         return new GivenModulesInternal<>(transformer.that(predicate));
     }
 
