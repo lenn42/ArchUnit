@@ -54,11 +54,11 @@ import static java.util.stream.Collectors.toMap;
 
 /**
  * A collection of {@link ArchModule "architectural modules"}. This class provides a convenient API to partition the {@link JavaClass classes}
- * of a code base into (cohesive) modules and assert properties of these modules. E.g. their dependencies to each other or dependencies
+ * of a code base into (cohesive) modules and assert properties of these modules, e.g. their dependencies to each other or dependencies
  * not contained in any of the constructed modules.<br>
- * This class provides several entry points to create {@link ArchModule modules} from a set of {@link JavaClass classes} in a convenient way:<br>
+ * This class provides several entry points to create {@link ArchModule modules} from a set of {@link JavaClass classes}:<br>
  * <ul>
- *     <li>{@link #defineBy(IdentifierAssociation)} - the most generic API allowing a lot of flexibility</li>
+ *     <li>{@link #defineBy(IdentifierAssociation)} - the most generic/flexible API</li>
  *     <li>{@link #defineByPackages(String)} - an API similar to {@link Slices#matching(String)}</li>
  * </ul>
  */
