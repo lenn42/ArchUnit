@@ -53,7 +53,7 @@ public interface ModulesByAnnotationShould<ANNOTATION extends Annotation> extend
      * interface ModuleTwoDescriptor {}
      *
      * &#64;MyModule(name = "Module Three")
-     * interface ModuleTwoDescriptor {}
+     * interface ModuleThreeDescriptor {}
      * </code></pre>
      * Then the allowed dependencies between the modules would be
      * <pre><code>
