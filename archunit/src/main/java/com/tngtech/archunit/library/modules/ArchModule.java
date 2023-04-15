@@ -41,7 +41,7 @@ import static java.util.Collections.emptyList;
 
 /**
  * Represents a generic "architecture module", i.e. any group of classes that should form a cohesive unit.<br>
- * An {@link ArchModule} can be identified by its {@link #getIdentifier() identifier}. Vice versa and {@link ArchModule}
+ * An {@link ArchModule} can be identified by its {@link #getIdentifier() identifier}. Vice versa an {@link ArchModule}
  * can be defined as a mapping {@code JavaClass -> ArchModule.Identifier}, where all classes that are mapped to the
  * same identifier will end up in the same module.<br>
  * {@link ArchModule} offers an API to obtain all {@link #getClassDependenciesFromSelf() class dependencies}, i.e.
