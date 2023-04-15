@@ -32,8 +32,7 @@ class CyclesAssertion extends AbstractObjectAssert<CyclesAssertion, Collection<C
 
         Set<Set<List<?>>> thisOriginsAndTargets = actual.stream().map(it -> toOriginsAndTargets(it.getEdges())).collect(toSet());
         Set<Set<List<?>>> otherOriginsAndTargets = Arrays.stream(cycles).map(it -> toOriginsAndTargets(it.getEdges())).collect(toSet());
-        assertThat(thisOriginsAndTargets).isSubsetOf(otherOriginsAndTargets);
-        assertThat(otherOriginsAndTargets).isSubsetOf(thisOriginsAndTargets);
+        assertThat(thisOriginsAndTargets).isEqualTo(otherOriginsAndTargets);
 
         return this;
     }
