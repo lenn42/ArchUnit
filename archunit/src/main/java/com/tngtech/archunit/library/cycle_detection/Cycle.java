@@ -25,7 +25,7 @@ import static com.tngtech.archunit.PublicAPI.Usage.ACCESS;
  * A cycle formed by the referenced {@code EDGEs}. A cycle in this context always refers to a "simple" cycle,
  * i.e. the list of edges is not empty, the {@link Edge#getOrigin() origin} of the first {@link Edge} is equal
  * to the {@link Edge#getTarget() target} of the last {@link Edge} and every node contained in the cycle
- * is passed exactly once.
+ * is contained exactly once.
  *
  * @param <EDGE> The type of the edges forming the cycle
  */
