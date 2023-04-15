@@ -166,9 +166,9 @@ public class ModulesTest {
         }
 
         private Supplier<ArchModule.Identifier> identifierInParentPackageOf(JavaPackage javaPackage) {
-            return () -> javaPackage.getParent().isPresent()
-                    ? getIdentifierOfPackage(javaPackage.getParent().get())
-                    : ArchModule.Identifier.ignore();
+            return () -> javaPackage.getParent()
+                    .map(parent -> getIdentifierOfPackage(parent))
+                    .orElseGet(ArchModule.Identifier::ignore);
         }
     }
 }
