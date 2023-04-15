@@ -119,12 +119,8 @@ public final class ModuleDependency<DESCRIPTOR extends ArchModule.Descriptor> im
     }
 
     private static Set<Dependency> filterDependenciesBetween(ArchModule<?> origin, ArchModule<?> target) {
-        ImmutableSet.Builder<Dependency> result = ImmutableSet.builder();
-        for (Dependency dependency : origin.getClassDependenciesFromSelf()) {
-            if (target.contains(dependency.getTargetClass())) {
-                result.add(dependency);
-            }
-        }
-        return result.build();
+        return origin.getClassDependenciesFromSelf().stream()
+	                        .filter(dependency -> target.contains(dependency.getTargetClass()))
+	                        .collect(toImmutableSet());
     }
 }
