@@ -238,7 +238,7 @@ public final class ArchModule<DESCRIPTOR extends ArchModule.Descriptor> extends 
 
         /**
          * @param index Index of the requested (textual) part
-         * @return Part with the given index; indizes are 1-based (i.e. {@link #getPart(int) getPart(1)}) returns the first part.
+         * @return Part with the given index; indices are 1-based (i.e. {@link #getPart(int) getPart(1)}) returns the first part.
          */
         @PublicAPI(usage = ACCESS)
         public String getPart(int index) {
