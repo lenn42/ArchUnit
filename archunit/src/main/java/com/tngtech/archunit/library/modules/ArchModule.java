@@ -280,7 +280,7 @@ public final class ArchModule<DESCRIPTOR extends ArchModule.Descriptor> extends 
     }
 
     /**
-     * Contains meta-information for any given {@link ArchModule}. By default, this meta-information
+     * Contains meta-information for an {@link ArchModule}. By default, this meta-information
      * only contains the {@link ArchModule#getName() module name}, but it can be freely extended by users
      * to transport more meta-information (e.g. allowed dependencies) when modularizing {@link JavaClasses}
      * into {@link ArchModules}.
