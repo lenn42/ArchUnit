@@ -79,11 +79,10 @@ public final class ModuleDependency<DESCRIPTOR extends ArchModule.Descriptor> im
     @Override
     @PublicAPI(usage = ACCESS)
     public String getDescription() {
-        String classDescriptions = classDependencies.stream()
+        String classDependencyDescriptions = classDependencies.stream()
                 .map(HasDescription::getDescription)
                 .collect(joining(lineSeparator()));
-
-        return String.format("Module Dependency [%s -> %s]:%n%s", origin.getName(), target.getName(), classDescriptions);
+        return String.format("Module Dependency [%s -> %s]:%n%s", origin.getName(), target.getName(), classDependencyDescriptions);
     }
 
     @Override
