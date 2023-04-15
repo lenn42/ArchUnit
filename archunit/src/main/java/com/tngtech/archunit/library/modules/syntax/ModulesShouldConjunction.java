@@ -33,7 +33,7 @@ public interface ModulesShouldConjunction<DESCRIPTOR extends ArchModule.Descript
     ModulesShould<DESCRIPTOR> andShould();
 
     /**
-     * Joins another condition to this rule with {@code and} semantics. That is, all classes under test
+     * Joins another condition to this rule with {@code and} semantics. That is, all modules under test
      * now needs to satisfy the existing condition and this new one.<br>
      * Note that this is always left-associative and does not support any operator precedence.
      *
