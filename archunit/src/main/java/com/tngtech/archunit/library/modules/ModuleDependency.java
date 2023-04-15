@@ -98,7 +98,7 @@ public final class ModuleDependency<DESCRIPTOR extends ArchModule.Descriptor> im
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        final ModuleDependency<?> other = (ModuleDependency<?>) obj;
+        ModuleDependency<?> other = (ModuleDependency<?>) obj;
         return Objects.equals(this.origin.getIdentifier(), other.origin.getIdentifier())
                 && Objects.equals(this.target.getIdentifier(), other.target.getIdentifier());
     }
