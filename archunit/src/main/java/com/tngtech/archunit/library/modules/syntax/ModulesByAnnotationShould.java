@@ -36,7 +36,7 @@ public interface ModulesByAnnotationShould<ANNOTATION extends Annotation> extend
      * derived from the {@link ANNOTATION} property named {@code annotationPropertyName}. This property *must* be of type {@code String[]}
      * and contain the {@link ArchModule#getName() names} of the {@link ArchModule}s to which access is allowed.
      * <br><br>
-     * For example, given the annotation
+     * For example, given the user-defined annotation
      * <pre><code>
      * &#64;interface MyModule {
      *   String name();
