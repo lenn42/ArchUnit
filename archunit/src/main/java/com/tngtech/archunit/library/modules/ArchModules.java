@@ -173,7 +173,7 @@ public final class ArchModules<DESCRIPTOR extends ArchModule.Descriptor> extends
         return defineBy(identifierByPackage(packageIdentifier));
     }
 
-    private static IdentifierAssociation identifierByPackage(final String packageIdentifier) {
+    private static IdentifierAssociation identifierByPackage(String packageIdentifier) {
         return javaClass -> {
             PackageMatcher packageMatcher = PackageMatcher.of(packageIdentifier);
             Optional<PackageMatcher.Result> result = packageMatcher.match(javaClass.getPackageName());
