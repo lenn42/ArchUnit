@@ -273,12 +273,11 @@ public final class CycleArchCondition<COMPONENT> extends ArchCondition<COMPONENT
 
         private String createDetails(Map<String, ComponentDependency<COMPONENT>> descriptionsToEdges) {
             List<String> details = new ArrayList<>();
-            int componentIndex = 0;
-            for (Map.Entry<String, ComponentDependency<COMPONENT>> edgeWithDescription : descriptionsToEdges.entrySet()) {
-                ++componentIndex;
-                details.add(String.format("  %d. Dependencies of %s", componentIndex, edgeWithDescription.getKey()));
-                details.addAll(dependenciesDescription(edgeWithDescription.getValue()));
-            }
+            AtomicInteger componentIndex = new AtomicInteger(0);
+            descriptionsToEdges.forEach((description, dependencies) -> {
+                details.add(String.format("  %d. Dependencies of %s", componentIndex.incrementAndGet(), description));
+                details.addAll(dependenciesDescription(dependencies));
+            });            
             return Joiner.on(lineSeparator()).join(details);
         }
 
